@@ -82,14 +82,15 @@ public final class MixinSignEditScreen implements ScreenController {
         method = "renderSignText",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I",
+            target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)V",
             ordinal = 0
         )
     )
-    private int renderCaret(final GuiGraphics instance, final Font font, final String text, final int x, final int y, final int color, final boolean dropShadow, final Operation<Integer> original) {
+    private void renderCaret(final GuiGraphics instance, final Font font, final String text, final int x, final int y, final int color, final boolean dropShadow, final Operation<Integer> original) {
         // Check IME Status
         if (text.isEmpty() || caramelChat$wrapper.getStatus() == AbstractIMEWrapper.InputStatus.NONE) {
-            return original.call(instance, font, text, x, y, color, dropShadow);
+            original.call(instance, font, text, x, y, color, dropShadow);
+            return;
         }
 
         // Line Check (stupid way...)
@@ -97,7 +98,8 @@ public final class MixinSignEditScreen implements ScreenController {
         final int centerHeight = (4 * lineHeight / 2);
         final int line = ((y + centerHeight) / lineHeight);
         if (line != this.line) {
-            return original.call(instance, font, text, x, y, color, dropShadow);
+            original.call(instance, font, text, x, y, color, dropShadow);
+            return;
         }
 
         // Render Caret
@@ -108,6 +110,6 @@ public final class MixinSignEditScreen implements ScreenController {
         final String input = text.substring(firstEndPos, secondStartPos);
         final String second = text.substring(secondStartPos);
         final String result = (first + ChatFormatting.UNDERLINE + input + ChatFormatting.RESET + second); // OMG..
-        return original.call(instance, font, result, x, y, color, dropShadow);
+        original.call(instance, font, result, x, y, color, dropShadow);
     }
 }

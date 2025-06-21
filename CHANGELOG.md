@@ -1,0 +1,1 @@
+- Support Minecraft 1.21.6+
