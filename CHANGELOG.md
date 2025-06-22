@@ -1,2 +1,0 @@
-- Support Minecraft 1.21.6+
-- Temporary fix for sign crash issue (Fixes #34)
