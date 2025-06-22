@@ -10,9 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.font.TextFieldHelper;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
-import net.minecraft.world.level.block.entity.SignBlockEntity;
 import org.jetbrains.annotations.Nullable;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,8 +29,8 @@ public final class MixinSignEditScreen implements ScreenController {
 
     @Unique private WrapperSignEditScreen caramelChat$wrapper;
     @Unique private boolean caramelChat$lazyInit;
+    @Unique private int caramelChat$currentRenderLine = -1;
     @Shadow @Nullable public TextFieldHelper signField;
-    @Shadow @Final public SignBlockEntity sign;
     @Shadow public int line;
 
     @Inject(method = "init", at = @At("HEAD"))
@@ -78,6 +76,23 @@ public final class MixinSignEditScreen implements ScreenController {
         return result;
     }
 
+    @Inject(method = "renderSignText", at = @At("HEAD"))
+    private void captureRenderLine(final GuiGraphics instance, final CallbackInfo ci) {
+        this.caramelChat$currentRenderLine = -1;
+    }
+
+    @Redirect(
+        method = "renderSignText",
+        at = @At(
+            value = "INVOKE",
+            target = "Ljava/lang/String;substring(II)Ljava/lang/String;"
+        )
+    )
+    private String temporaryFixOverflow(final String value, final int beginIndex, final int endIndex) {
+        // TODO What's wrong with this? (Fixes #34)
+        return value.substring(beginIndex, Math.min(value.length(), endIndex));
+    }
+
     @WrapOperation(
         method = "renderSignText",
         at = @At(
@@ -87,17 +102,19 @@ public final class MixinSignEditScreen implements ScreenController {
         )
     )
     private void renderCaret(final GuiGraphics instance, final Font font, final String text, final int x, final int y, final int color, final boolean dropShadow, final Operation<Integer> original) {
+        this.caramelChat$currentRenderLine++;
+
         // Check IME Status
         if (text.isEmpty() || caramelChat$wrapper.getStatus() == AbstractIMEWrapper.InputStatus.NONE) {
             original.call(instance, font, text, x, y, color, dropShadow);
             return;
         }
 
-        // Line Check (stupid way...)
-        final int lineHeight = this.sign.getTextLineHeight();
-        final int centerHeight = (4 * lineHeight / 2);
-        final int line = ((y + centerHeight) / lineHeight);
-        if (line != this.line) {
+        // Skip caret render
+        if (
+            this.caramelChat$currentRenderLine != this.line || // Line Check
+            this.caramelChat$wrapper.getSecondStartPos() > text.length() // TODO What's wrong with this? (Fixes #34)
+        ) {
             original.call(instance, font, text, x, y, color, dropShadow);
             return;
         }
