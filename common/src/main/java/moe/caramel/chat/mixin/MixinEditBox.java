@@ -7,6 +7,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -16,7 +17,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 /**
@@ -26,13 +26,12 @@ import java.util.function.Predicate;
 public abstract class MixinEditBox implements EditBoxController {
 
     @Unique private WrapperEditBox caramelChat$wrapper;
-    @Unique private BiFunction<String, Integer, FormattedCharSequence> caramelChat$formatter;
     @Unique private int caramelChat$cacheCursorPos, caramelChat$cacheHighlightPos;
-    @Shadow private BiFunction<String, Integer, FormattedCharSequence> formatter;
     @Shadow private boolean canLoseFocus;
     @Shadow public int highlightPos;
     @Shadow public int cursorPos;
     @Shadow public String value;
+    @Shadow @Final private List<EditBox.TextFormatter> formatters;
 
     @Redirect(
         method = "<init>(Lnet/minecraft/client/gui/Font;IIIILnet/minecraft/client/gui/components/EditBox;Lnet/minecraft/network/chat/Component;)V",
@@ -51,8 +50,7 @@ public abstract class MixinEditBox implements EditBoxController {
         if (this.caramelChat$wrapper == null) {
             this.caramelChat$wrapper = new WrapperEditBox((EditBox) (Object) this);
         }
-        this.caramelChat$formatter = this.formatter; // Cache
-        this.caramelChat$caretFormatter();
+        this.formatters.add(this.caramelChat$caretFormatter());
     }
 
     @Override
@@ -62,19 +60,13 @@ public abstract class MixinEditBox implements EditBoxController {
 
     // ================================ (Formatter)
 
-    @Inject(method = "setFormatter", at = @At("TAIL"))
-    private void setFormatter(final BiFunction<String, Integer, FormattedCharSequence> formatter, final CallbackInfo ci) {
-        this.caramelChat$formatter = formatter; // Cache
-        this.caramelChat$caretFormatter();
-    }
-
     @Unique
-    private void caramelChat$caretFormatter() {
+    private EditBox.TextFormatter caramelChat$caretFormatter() {
         // Set caret renderer
-        this.formatter = ((original, firstPos) -> {
+        return ((original, firstPos) -> {
             /* Original */
             if (caramelChat$wrapper.getStatus() == AbstractIMEWrapper.InputStatus.NONE) {
-                return caramelChat$formatter.apply(original, firstPos);
+                return null;
             }
             /* Warning */
             else if (caramelChat$wrapper.blockTyping()) {
@@ -88,7 +80,7 @@ public abstract class MixinEditBox implements EditBoxController {
                 // LastPos ex. [ ABCDEFG(INPUT)HI|JK} ]
                 final int lastPos = (firstPos + original.length()); // firstPos ~ lastPos
                 if (lastPos <= caramelChat$wrapper.getFirstEndPos() || caramelChat$wrapper.getSecondStartPos() < firstPos) {
-                    return caramelChat$formatter.apply(original, firstPos);
+                    return null;
                 }
 
                 // Process
