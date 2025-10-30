@@ -10,6 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.font.TextFieldHelper;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import net.minecraft.client.input.KeyEvent;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -57,7 +58,7 @@ public final class MixinSignEditScreen implements ScreenController {
         @At(value = "INVOKE", ordinal = 0, target = "Lnet/minecraft/client/gui/font/TextFieldHelper;setCursorToEnd()V"),
         @At(value = "INVOKE", ordinal = 1, target = "Lnet/minecraft/client/gui/font/TextFieldHelper;setCursorToEnd()V")
     })
-    private void keyPressed(final int key, final int scancode, final int action, final CallbackInfoReturnable<Boolean> cir) {
+    private void keyPressed(final KeyEvent event, final CallbackInfoReturnable<Boolean> cir) {
         this.caramelChat$wrapper.setOrigin();
     }
 
@@ -65,11 +66,11 @@ public final class MixinSignEditScreen implements ScreenController {
         method = "keyPressed",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/font/TextFieldHelper;keyPressed(I)Z"
+            target = "Lnet/minecraft/client/gui/font/TextFieldHelper;keyPressed(Lnet/minecraft/client/input/KeyEvent;)Z"
         )
     )
-    private boolean helperKeyPressed(final TextFieldHelper helper, final int key) {
-        final boolean result = helper.keyPressed(key);
+    private boolean helperKeyPressed(final TextFieldHelper helper, final KeyEvent event) {
+        final boolean result = helper.keyPressed(event);
         if (result) {
             this.caramelChat$wrapper.setToNoneStatus();
         }

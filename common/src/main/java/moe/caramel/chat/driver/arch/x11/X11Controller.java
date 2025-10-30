@@ -10,6 +10,7 @@ import moe.caramel.chat.util.ModLogger;
 import moe.caramel.chat.wrapper.AbstractIMEWrapper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeX11;
 
@@ -18,7 +19,7 @@ import org.lwjgl.glfw.GLFWNativeX11;
  */
 public final class X11Controller implements IController {
 
-    private static final long windowId = Minecraft.getInstance().getWindow().getWindow();
+    private static final long windowId = Minecraft.getInstance().getWindow().handle();
     static X11Operator focused;
 
     private final Driver_X11 driver;
@@ -64,7 +65,7 @@ public final class X11Controller implements IController {
         ModLogger.log("[Native] Load the X11 Controller.");
         this.driver = Native.load(Main.copyLibrary("libx11cocoainput.so"), Driver_X11.class);
 
-        final long windowId = Minecraft.getInstance().getWindow().getWindow();
+        final long windowId = Minecraft.getInstance().getWindow().handle();
         this.driver.initialize(
             // Windows Id
             windowId,
@@ -87,13 +88,13 @@ public final class X11Controller implements IController {
 
     public static void setupKeyboardEvent() {
         final Minecraft minecraft = Minecraft.getInstance();
-        minecraft.keyboardHandler.setup(windowId);
+        minecraft.keyboardHandler.setup(minecraft.getWindow());
         GLFW.glfwSetCharModsCallback(windowId, (window, codepoint, mods) -> {
             minecraft.execute(() -> {
                 if (X11Controller.focused != null) {
                     X11Controller.focused.getWrapper().insertText(String.valueOf(Character.toChars(codepoint)));
                 } else {
-                    minecraft.keyboardHandler.charTyped(window, codepoint, mods);
+                    minecraft.keyboardHandler.charTyped(windowId, new CharacterEvent(codepoint, mods));
                 }
             });
         });
